@@ -26,6 +26,8 @@ public class GameManager : MonoBehaviour
 
     private int levelCount;
 
+    public EventHandler OnFullRewind;
+
     
 
     private void Awake()
@@ -106,6 +108,9 @@ public class GameManager : MonoBehaviour
         currentLevelIndex = PlayerPrefs.GetInt("Level");
     }
 
-    
+    public void FullRewind()
+    {
+        OnFullRewind?.Invoke(this, EventArgs.Empty);
+    }
     
 }

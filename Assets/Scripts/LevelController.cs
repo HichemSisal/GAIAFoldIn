@@ -21,7 +21,11 @@ public class LevelController : MonoBehaviour
     private bool isSwiping = false; // to prevent multiple swipes at the same time
     [SerializeField]
     private bool isBusy = false; // to prevent multiple moves at the same time
-    private float m_rotationDuration = 0.75f;
+    private float rotationDuration = 0.75f;
+
+    private float rewindRotationDuration = 0.15f;
+    [SerializeField]
+  private List<BlockScript> blocksToRewind = new List<BlockScript>();
 
     // Start is called before the first frame update
     void Start()
@@ -34,6 +38,7 @@ public class LevelController : MonoBehaviour
         EasyTouch.On_SwipeStart += OnSwipeStart;
         EasyTouch.On_Swipe += OnSwipe;
         EasyTouch.On_SwipeEnd += OnSwipeEnd;
+        GameManager.Instance.OnFullRewind += OnFullRewind;
     }
 
     private void OnDisable()
@@ -41,6 +46,7 @@ public class LevelController : MonoBehaviour
         EasyTouch.On_SwipeStart -= OnSwipeStart;
         EasyTouch.On_Swipe -= OnSwipe;
         EasyTouch.On_SwipeEnd -= OnSwipeEnd;
+        GameManager.Instance.OnFullRewind -= OnFullRewind;
     }
 
     // Update is called once per frame
@@ -92,7 +98,7 @@ private void OnSwipe  (Gesture gesture)
             if(blockChildToUnfold != null)
             {
                 Debug.Log("Unfold");
-                UnfoldBlock(blockHit, Direction.Left , blockChildToUnfold);
+                UnfoldBlock(blockHit, Direction.Left , blockChildToUnfold,rotationDuration,0.2f);
             }
             else
             {
@@ -113,7 +119,7 @@ private void OnSwipe  (Gesture gesture)
             FindBlockChildToUnfoldToDirection(blockHit, Direction.Right, out BlockScript blockChildToUnfold);
             if(blockChildToUnfold != null)
             {
-                UnfoldBlock(blockHit, Direction.Right , blockChildToUnfold);
+                UnfoldBlock(blockHit, Direction.Right , blockChildToUnfold,rotationDuration,0.2f);
             }
             else
             {
@@ -133,7 +139,7 @@ private void OnSwipe  (Gesture gesture)
             FindBlockChildToUnfoldToDirection(blockHit, Direction.Up, out BlockScript blockChildToUnfold);
             if(blockChildToUnfold != null)
             {
-                UnfoldBlock(blockHit, Direction.Up , blockChildToUnfold);
+                UnfoldBlock(blockHit, Direction.Up , blockChildToUnfold,rotationDuration,0.2f);
             }
             else
             {
@@ -153,7 +159,7 @@ private void OnSwipe  (Gesture gesture)
             FindBlockChildToUnfoldToDirection(blockHit, Direction.Down, out BlockScript blockChildToUnfold);
             if(blockChildToUnfold != null)
             {
-                UnfoldBlock(blockHit, Direction.Down , blockChildToUnfold);
+                UnfoldBlock(blockHit, Direction.Down , blockChildToUnfold,rotationDuration,0.2f);
             }
             else
             {
@@ -174,29 +180,24 @@ private void OnSwipeEnd(Gesture gesture)
 
 private void FindBlockParentToFolddInto (BlockScript block , Direction direction, out BlockScript blockParentToFoldInto)
 {
-    Debug.Log("FindBlockParentToFolddInto");
     // Find the block to fold into
     // If the block has a neighbor in the direction of the swipe, then fold into that neighbor
     blockParentToFoldInto = null;
     if (direction == Direction.Left)
     {           
             blockParentToFoldInto = blocks.Find(x => x.GetPosX() == block.GetPosX() - 1 && x.GetPosZ() == block.GetPosZ());   
-            Debug.Log("FindBlockParentToFolddInto 1"); 
     }
     else if (direction == Direction.Right)
     {        
             blockParentToFoldInto = blocks.Find(x => x.GetPosX() == block.GetPosX() + 1 && x.GetPosZ() == block.GetPosZ());    
-            Debug.Log("FindBlockParentToFolddInto 2");   
     }
     else if (direction == Direction.Up)
     {      
             blockParentToFoldInto = blocks.Find(x => x.GetPosX() == block.GetPosX() && x.GetPosZ() == block.GetPosZ() + 1);     
-            Debug.Log("FindBlockParentToFolddInto 3");
     }
     else if (direction == Direction.Down)
     {
             blockParentToFoldInto = blocks.Find(x => x.GetPosX() == block.GetPosX() && x.GetPosZ() == block.GetPosZ() - 1);
-            Debug.Log("FindBlockParentToFolddInto 4");
     }
 }
 
@@ -261,14 +262,14 @@ private void FoldBlock(BlockScript block , Direction direction, BlockScript bloc
         isBusy = false;
         block.SetColliderState(false);
         blockHit = null;
+        blocksToRewind.Add(block);
         CheckWin(GameManager.Instance.LevelCompleted);
-    }, m_rotationDuration);
+    }, rotationDuration);
 
 }
 
-private void UnfoldBlock(BlockScript block, Direction direction, BlockScript blockChildToUnfold)
+private void UnfoldBlock(BlockScript block, Direction direction, BlockScript blockChildToUnfold,float rotationDuration,float timeToWait)
 {
-    
     blockChildToUnfold.Unfold(direction,  () =>
     {
         blockChildToUnfold.SetParent(null);
@@ -276,10 +277,11 @@ private void UnfoldBlock(BlockScript block, Direction direction, BlockScript blo
         block.RemoveBlockChild(blockChildToUnfold);
         SetLayersAfterUnfold(blockChildToUnfold , block   );
         isBusy = false;
-       blockChildToUnfold.SetColliderState(true);
+        blockChildToUnfold.SetColliderState(true);
         blockHit = null;
+        blocksToRewind.Remove(blockChildToUnfold);
         CheckWin(GameManager.Instance.LevelCompleted);
-    }, m_rotationDuration);
+    }, rotationDuration, timeToWait);
 }
 
 private void SetLayersAfterFold(BlockScript block, BlockScript blockParentToFoldInto)
@@ -403,13 +405,115 @@ private void CheckWin(Action levelCompleted)
      }
 
     }
-
-
     levelCompleted();
-     this.enabled = false;
+    this.enabled = false;
+}
+
+private void OnFullRewind(object sender, EventArgs e)
+{
+   if(isBusy)
+    {
+       return;
+    }
+
+if(blocksToRewind.Count == 0 || blocksToRewind == null)
+    {
+         return;
+    }
+
+StartCoroutine(IEOnFullRewind());
+
+}
+
+private IEnumerator IEOnFullRewind()
+{
+    int blocksToRewindCount = blocksToRewind.Count;
+    isBusy = true;
+    for(int i =0 ; i <   blocksToRewindCount ; i++)
+    {
+        FirstBlockToRewind(blocksToRewind[blocksToRewindCount-i-1].GetParent(),out BlockScript nextBlockToRewind,out Direction direction);
+        
+        if(nextBlockToRewind != null)
+        {
+            ReversBlock(nextBlockToRewind.GetParent(), direction, nextBlockToRewind,rotationDuration,0.0f);
+            yield return new WaitForSeconds(rotationDuration);
+        }
+        else
+        {
+            isBusy = false ;
+            break;
+        }
+
+    }
+
+    isBusy = false;
+}
+
+private void ReversBlock  (BlockScript block, Direction direction, BlockScript blockChildToUnfold, float rotationDuration, float timeToWait)
+{
+    blockChildToUnfold.Unfold(direction,  () =>
+    {
+        
+        blocksToRewind.RemoveAt(blocksToRewind.Count - 1);
+        blockChildToUnfold.SetParent(null);
+        blockChildToUnfold.transform.SetParent(GameManager.Instance.GetLevelTransform());
+        block.RemoveBlockChild(blockChildToUnfold);
+        SetLayersAfterUnfold(blockChildToUnfold , block   );
+        blockChildToUnfold.SetColliderState(true);
+    }, rotationDuration, timeToWait);
+}
+
+//
+private void FirstBlockToRewind(BlockScript block, out BlockScript nextBlockToRewind, out Direction direction)
+{
+    nextBlockToRewind = null;
+     direction = Direction.Right;
+    List<BlockScript> blockChildren = block.GetBlockChildren();
+    if(blockChildren.Count == 0 || blockChildren == null)
+    {
+        return ;
+    }
+
+nextBlockToRewind = blockChildren.Find(x => x.GetInitialPosition().x == block.GetPosX()+1 && blockChildren.IndexOf(x) == blockChildren.Count - 1);
+
+if(nextBlockToRewind != null)
+{
+    direction = Direction.Right;
+    return;
+
+
+}
+nextBlockToRewind = blockChildren.Find(x => x.GetInitialPosition().x == block.GetPosX()-1 && blockChildren.IndexOf(x) == blockChildren.Count - 1);
+
+if(nextBlockToRewind != null)
+{
+    direction = Direction.Left;
+    return;
+}
+nextBlockToRewind = blockChildren.Find(x => x.GetInitialPosition().z == block.GetPosZ()+1 && blockChildren.IndexOf(x) == blockChildren.Count - 1);
+
+if(nextBlockToRewind != null)
+{
+    direction = Direction.Up;
+    return;
+}
+
+nextBlockToRewind = blockChildren.Find(x => x.GetInitialPosition().z == block.GetPosZ()-1 && blockChildren.IndexOf(x) == blockChildren.Count - 1);
+
+
+if(nextBlockToRewind != null)
+{
+    direction = Direction.Down;
+    return;
 }
 
 }
+
+
+}
+
+
+
  
 
 

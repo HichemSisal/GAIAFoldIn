@@ -98,9 +98,9 @@ public class BlockScript : MonoBehaviour
         StartCoroutine(IEFold(direction, count, success, rotationDuration));
     }
 
-public void Unfold(Direction direction,  Action success, float rotationDuration)
+public void Unfold(Direction direction,  Action success, float rotationDuration,float timeToWait)
 {
-    StartCoroutine(IEUnfold(direction,  success, rotationDuration));
+    StartCoroutine(IEUnfold(direction,  success, rotationDuration, timeToWait));
 }
 
 private IEnumerator IEFold(Direction direction, int count, Action success, float rotationDuration)
@@ -153,7 +153,7 @@ private IEnumerator IEFold(Direction direction, int count, Action success, float
 }
 
 
-private IEnumerator IEUnfold (Direction direction , Action success, float rotationDuration)
+private IEnumerator IEUnfold (Direction direction , Action success, float rotationDuration,float timeToWait)
 {
 
     Transform parent = transform.parent;
@@ -197,7 +197,7 @@ private IEnumerator IEUnfold (Direction direction , Action success, float rotati
 
     transform.parent = parent;
 //
-    SetPosition(GetInitialPosition() , 0.2f);
+    SetPosition(GetInitialPosition() , timeToWait);
     yield return new WaitUntil(() => transform.position == blockInitialPosition);
     success();
     Debug.Log("Success is called    1");

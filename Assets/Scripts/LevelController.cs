@@ -3,35 +3,30 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using System.Linq;
-//
-public enum Direction
+
+public enum Direction  // directions of the swipe
 {
     Right,
     Left,
     Up,
     Down
 }
-public class LevelController : MonoBehaviour
+public class LevelController : MonoBehaviour 
 {
     [SerializeField]
-    private List<BlockScript> blocks = new List<BlockScript>();
+    private List<BlockScript> blocks = new List<BlockScript>();  // list of blocks in the scene
     [SerializeField]
-    private BlockScript blockHit;
+    private BlockScript blockHit; // the block that is hit by the swipe
     [SerializeField]
     private bool isSwiping = false; // to prevent multiple swipes at the same time
     [SerializeField]
     private bool isBusy = false; // to prevent multiple moves at the same time
-    private float rotationDuration = 0.75f;
+    private float rotationDuration = 0.75f; // duration of the rotation
 
-    private float rewindRotationDuration = 0.15f;
+    private float rewindRotationDuration = 0.15f; // duration of the rewind rotation
     [SerializeField]
-  private List<BlockScript> blocksToRewind = new List<BlockScript>();
+  private List<BlockScript> blocksToRewind = new List<BlockScript>(); // list of blocks to rewind
 
-    // Start is called before the first frame update
-    void Start()
-    {
-  
-    }
 
     private void OnEnable()
     {
@@ -49,11 +44,6 @@ public class LevelController : MonoBehaviour
         GameManager.Instance.OnFullRewind -= OnFullRewind;
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 
     private void OnSwipeStart(Gesture gesture)
     {

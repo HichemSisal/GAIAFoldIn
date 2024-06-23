@@ -7,10 +7,10 @@ public class WinningParams : MonoBehaviour
   
 
 [SerializeField]
-private List<Position> winningPositions = new List<Position>();
+private List<Position> winningPositions = new List<Position>(); // winning positions of the blocks
 
 [SerializeField]
-private List<int> winningLayers = new List<int>();
+private List<int> winningLayers = new List<int>(); // O = first level , 1 = second level , 2 = third level
 
     public List<Position> GetWinningPositions()
     {
